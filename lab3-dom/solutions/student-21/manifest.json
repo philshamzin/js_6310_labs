@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "KAI High Visibility Switcher",
+  "version": "1.0",
+  "description": "Расширение для применения High Visibility стиля к сайту kai.ru (желтый фон, черный жирный текст)",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://kai.ru/*", "https://www.kai.ru/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "images/icon16.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  }
+}
