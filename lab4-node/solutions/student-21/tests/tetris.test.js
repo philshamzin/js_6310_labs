@@ -1,14 +1,46 @@
 import { describe, test, expect } from '@jest/globals';
-import {
-  getTetrisRules,
-  generateField,
-  getRandomTetramino,
-  getAllTetraminos,
-  isValidFieldSize
-} from '../src/utils/index.js';
+import { getRandomTetromino, getTetrisRules, generateField } from '../src/utils/index.js';
 
 describe('Tetris Utils Module', () => {
   
+  describe('getRandomTetromino', () => {
+    test('should return a non-empty string', () => {
+      const result = getRandomTetromino();
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeGreaterThan(0);
+    });
+
+    test('should return a string containing figure details', () => {
+      const result = getRandomTetromino();
+      expect(result).toMatch(/Фигура [IOTSZLJ]:\n```\n(.|\n)+\n```/);
+    });
+
+    test('should contain Фигура word', () => {
+      const result = getRandomTetromino();
+      expect(result).toContain('Фигура');
+    });
+
+    test('should return different tetrominos on multiple calls', () => {
+      const results = new Set();
+      for (let i = 0; i < 50; i++) {
+        results.add(getRandomTetromino());
+      }
+      expect(results.size).toBeGreaterThan(1);
+    });
+
+    test('should contain markdown code blocks', () => {
+      const result = getRandomTetromino();
+      expect(result).toContain('```');
+    });
+
+    test('should return valid tetromino types I, O, T, L, J, S, Z', () => {
+      const validTypes = ['I', 'O', 'T', 'L', 'J', 'S', 'Z'];
+      const result = getRandomTetromino();
+      const hasValidType = validTypes.some(type => result.includes(`Фигура ${type}:`));
+      expect(hasValidType).toBe(true);
+    });
+  });
+
   describe('getTetrisRules', () => {
     test('should return rules as a string', () => {
       const rules = getTetrisRules();
@@ -19,152 +51,91 @@ describe('Tetris Utils Module', () => {
     test('should contain key game information', () => {
       const rules = getTetrisRules();
       expect(rules).toContain('Правила');
-      expect(rules).toContain('Тетрис');
-      expect(rules).toContain('10×20');
+      expect(rules).toContain('Tetris');
     });
 
-    test('should mention all tetramino types', () => {
+    test('should contain multiplayer mechanics', () => {
       const rules = getTetrisRules();
-      expect(rules).toContain('I, O, T, S, Z, J, L');
+      expect(rules).toContain('мусор');
+      expect(rules).toContain('атак');
+    });
+
+    test('should contain scoring information', () => {
+      const rules = getTetrisRules();
+      expect(rules).toContain('double');
+      expect(rules).toContain('triple');
+      expect(rules).toContain('tetris');
+    });
+
+    test('should contain defense mechanics', () => {
+      const rules = getTetrisRules();
+      expect(rules).toContain('защит');
+      expect(rules).toContain('очеред');
+    });
+
+    test('should contain target selection info', () => {
+      const rules = getTetrisRules();
+      expect(rules).toContain('цел');
+      expect(rules).toContain('игрок');
+    });
+
+    test('should mention tetromino types', () => {
+      const rules = getTetrisRules();
+      expect(rules).toContain('I, O, T, L, J, S, Z');
     });
   });
 
   describe('generateField', () => {
-    test('should generate field with default size 10x20', () => {
+    test('should return field as a string', () => {
       const field = generateField();
       expect(typeof field).toBe('string');
-      const lines = field.split('\n');
-      expect(lines.length).toBe(22); // 20 rows + top and bottom borders
+      expect(field.length).toBeGreaterThan(0);
     });
 
-    test('should generate field with custom size', () => {
-      const field = generateField(8, 15);
-      const lines = field.split('\n');
-      expect(lines.length).toBe(17); // 15 rows + 2 borders
-    });
-
-    test('should contain borders', () => {
+    test('should contain field title', () => {
       const field = generateField();
-      expect(field).toContain('╔');
-      expect(field).toContain('╗');
-      expect(field).toContain('╚');
-      expect(field).toContain('╝');
-      expect(field).toContain('║');
+      expect(field).toContain('Пустое поле');
+      expect(field).toContain('10x20');
     });
 
-    test('should throw error for invalid width', () => {
-      expect(() => generateField(2, 20)).toThrow('Ширина поля должна быть от 4 до 20');
-      expect(() => generateField(25, 20)).toThrow('Ширина поля должна быть от 4 до 20');
+    test('should contain field borders', () => {
+      const field = generateField();
+      expect(field).toContain('|');
+      expect(field).toContain('-');
     });
 
-    test('should throw error for invalid height', () => {
-      expect(() => generateField(10, 5)).toThrow('Высота поля должна быть от 10 до 30');
-      expect(() => generateField(10, 35)).toThrow('Высота поля должна быть от 10 до 30');
+    test('should contain empty cells', () => {
+      const field = generateField();
+      expect(field).toContain('.');
     });
 
-    test('should generate field with correct width', () => {
-      const field = generateField(10, 20);
+    test('should contain markdown code blocks', () => {
+      const field = generateField();
+      expect(field).toContain('```');
+    });
+
+    test('should have multiple rows', () => {
+      const field = generateField();
       const lines = field.split('\n');
-      // Проверяем длину первой строки (граница)
-      expect(lines[0].length).toBe(12); // ╔ + 10 символов + ╗
+      expect(lines.length).toBeGreaterThan(20);
+    });
+
+    test('should have field rows with correct format', () => {
+      const field = generateField();
+      expect(field).toContain('|..........|');
+    });
+
+    test('should have bottom border', () => {
+      const field = generateField();
+      expect(field).toContain('------------');
     });
   });
 
-  describe('getRandomTetramino', () => {
-    test('should return a tetramino object', () => {
-      const tetramino = getRandomTetramino();
-      expect(tetramino).toHaveProperty('name');
-      expect(tetramino).toHaveProperty('shape');
-      expect(tetramino).toHaveProperty('color');
-      expect(tetramino).toHaveProperty('symbol');
-    });
-
-    test('should return valid tetramino names', () => {
-      const validNames = [
-        'I-тетрамино',
-        'O-тетрамино',
-        'T-тетрамино',
-        'S-тетрамино',
-        'Z-тетрамино',
-        'J-тетрамино',
-        'L-тетрамино'
-      ];
-      
-      const tetramino = getRandomTetramino();
-      expect(validNames).toContain(tetramino.name);
-    });
-
-    test('should return tetramino with shape string', () => {
-      const tetramino = getRandomTetramino();
-      expect(typeof tetramino.shape).toBe('string');
-      expect(tetramino.shape.length).toBeGreaterThan(0);
-    });
-
-    test('should return tetramino with color', () => {
-      const tetramino = getRandomTetramino();
-      expect(typeof tetramino.color).toBe('string');
-      expect(tetramino.color.length).toBeGreaterThan(0);
-    });
-
-    test('should return different tetraminos on multiple calls', () => {
-      const tetraminos = new Set();
-      for (let i = 0; i < 50; i++) {
-        tetraminos.add(getRandomTetramino().name);
-      }
-      // С 50 вызовами должно быть хотя бы 3 разных тетрамино
-      expect(tetraminos.size).toBeGreaterThanOrEqual(3);
-    });
-  });
-
-  describe('getAllTetraminos', () => {
-    test('should return array of 7 tetraminos', () => {
-      const tetraminos = getAllTetraminos();
-      expect(Array.isArray(tetraminos)).toBe(true);
-      expect(tetraminos.length).toBe(7);
-    });
-
-    test('should return tetraminos with all required properties', () => {
-      const tetraminos = getAllTetraminos();
-      tetraminos.forEach(tetramino => {
-        expect(tetramino).toHaveProperty('name');
-        expect(tetramino).toHaveProperty('shape');
-        expect(tetramino).toHaveProperty('color');
-        expect(tetramino).toHaveProperty('symbol');
-      });
-    });
-
-    test('should return copies of tetraminos', () => {
-      const tetraminos1 = getAllTetraminos();
-      const tetraminos2 = getAllTetraminos();
-      
-      tetraminos1[0].name = 'Modified';
-      expect(tetraminos2[0].name).not.toBe('Modified');
-    });
-  });
-
-  describe('isValidFieldSize', () => {
-    test('should return true for valid sizes', () => {
-      expect(isValidFieldSize(10, 20)).toBe(true);
-      expect(isValidFieldSize(4, 10)).toBe(true);
-      expect(isValidFieldSize(20, 30)).toBe(true);
-      expect(isValidFieldSize(8, 15)).toBe(true);
-    });
-
-    test('should return false for invalid width', () => {
-      expect(isValidFieldSize(3, 20)).toBe(false);
-      expect(isValidFieldSize(21, 20)).toBe(false);
-      expect(isValidFieldSize(0, 20)).toBe(false);
-    });
-
-    test('should return false for invalid height', () => {
-      expect(isValidFieldSize(10, 9)).toBe(false);
-      expect(isValidFieldSize(10, 31)).toBe(false);
-      expect(isValidFieldSize(10, 0)).toBe(false);
-    });
-
-    test('should return false for both invalid dimensions', () => {
-      expect(isValidFieldSize(2, 5)).toBe(false);
-      expect(isValidFieldSize(25, 35)).toBe(false);
+  describe('Utils exports', () => {
+    test('should export all required functions', () => {
+      expect(typeof getRandomTetromino).toBe('function');
+      expect(typeof getTetrisRules).toBe('function');
+      expect(typeof generateField).toBe('function');
     });
   });
 });

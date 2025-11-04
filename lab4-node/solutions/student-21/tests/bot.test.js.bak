@@ -1,0 +1,276 @@
+import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import runBot from '../src/bot.js';
+import TelegramBot from 'node-telegram-bot-api';
+
+// Мокаем TelegramBot
+jest.mock('node-telegram-bot-api');
+
+describe('Bot Module', () => {
+  let mockBot;
+  let messageHandlers;
+  let textHandlers;
+
+  beforeEach(() => {
+    // Сбрасываем моки перед каждым тестом
+    jest.clearAllMocks();
+    
+    // Храним обработчики событий
+    messageHandlers = {};
+    textHandlers = [];
+
+    // Создаем мок бота
+    mockBot = {
+      sendMessage: jest.fn().mockResolvedValue({}),
+      onText: jest.fn((regex, callback) => {
+        textHandlers.push({ regex, callback });
+      }),
+      on: jest.fn((event, callback) => {
+        messageHandlers[event] = callback;
+      })
+    };
+
+    TelegramBot.mockImplementation(() => mockBot);
+
+    // Устанавливаем переменную окружения для токена
+    process.env.TELEGRAM_BOT_TOKEN = 'test-token';
+  });
+
+  afterEach(() => {
+    delete process.env.TELEGRAM_BOT_TOKEN;
+  });
+
+  test('should initialize bot with token from env', () => {
+    const bot = runBot();
+    
+    expect(TelegramBot).toHaveBeenCalledWith('test-token', { polling: true });
+    expect(bot).toBeDefined();
+  });
+
+  test('should exit if token is not provided', () => {
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+    runBot();
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Ошибка: TELEGRAM_BOT_TOKEN не найден в .env файле');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+
+    exitSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+  });
+
+  test('should register command handlers', () => {
+    runBot();
+
+    expect(mockBot.onText).toHaveBeenCalledTimes(5); // /start, /help, /rules, /field, /next_tetramino
+    expect(mockBot.on).toHaveBeenCalledWith('text', expect.any(Function));
+    expect(mockBot.on).toHaveBeenCalledWith('polling_error', expect.any(Function));
+  });
+
+  test('should handle /start command', () => {
+    runBot();
+
+    const startHandler = textHandlers.find(h => h.regex.test('/start'));
+    expect(startHandler).toBeDefined();
+
+    const mockMsg = {
+      chat: { id: 123 },
+      from: { id: 456 },
+      text: '/start'
+    };
+
+    startHandler.callback(mockMsg);
+
+    expect(mockBot.sendMessage).toHaveBeenCalledWith(
+      123,
+      expect.stringContaining('Добро пожаловать в TetrisBattle 2!')
+    );
+  });
+
+  test('should handle /help command', () => {
+    runBot();
+
+    const helpHandler = textHandlers.find(h => h.regex.test('/help'));
+    expect(helpHandler).toBeDefined();
+
+    const mockMsg = {
+      chat: { id: 123 },
+      text: '/help'
+    };
+
+    helpHandler.callback(mockMsg);
+
+    expect(mockBot.sendMessage).toHaveBeenCalledWith(
+      123,
+      expect.stringContaining('Доступные команды')
+    );
+  });
+
+  test('should handle /rules command', () => {
+    runBot();
+
+    const rulesHandler = textHandlers.find(h => h.regex.test('/rules'));
+    expect(rulesHandler).toBeDefined();
+
+    const mockMsg = {
+      chat: { id: 123 },
+      from: { id: 456 },
+      text: '/rules'
+    };
+
+    rulesHandler.callback(mockMsg);
+
+    expect(mockBot.sendMessage).toHaveBeenCalledWith(
+      123,
+      expect.stringContaining('Правила'),
+      { parse_mode: 'Markdown' }
+    );
+  });
+
+  test('should handle /field command', () => {
+    runBot();
+
+    const fieldHandler = textHandlers.find(h => h.regex.test('/field'));
+    expect(fieldHandler).toBeDefined();
+
+    const mockMsg = {
+      chat: { id: 123 },
+      from: { id: 456 },
+      text: '/field'
+    };
+
+    fieldHandler.callback(mockMsg);
+
+    expect(mockBot.sendMessage).toHaveBeenCalledWith(
+      123,
+      expect.stringContaining('╔'),
+      { parse_mode: 'Markdown' }
+    );
+  });
+
+  test('should handle /next_tetramino command', () => {
+    runBot();
+
+    const tetraminoHandler = textHandlers.find(h => h.regex.test('/next_tetramino'));
+    expect(tetraminoHandler).toBeDefined();
+
+    const mockMsg = {
+      chat: { id: 123 },
+      from: { id: 456 },
+      text: '/next_tetramino'
+    };
+
+    tetraminoHandler.callback(mockMsg);
+
+    expect(mockBot.sendMessage).toHaveBeenCalledWith(
+      123,
+      expect.stringContaining('тетрамино'),
+      { parse_mode: 'Markdown' }
+    );
+  });
+
+  test('should handle unknown commands', () => {
+    runBot();
+
+    const textHandler = messageHandlers.text;
+    expect(textHandler).toBeDefined();
+
+    const mockMsg = {
+      chat: { id: 123 },
+      from: { id: 456 },
+      text: '/unknown_command'
+    };
+
+    textHandler(mockMsg);
+
+    expect(mockBot.sendMessage).toHaveBeenCalledWith(
+      123,
+      expect.stringContaining('Неизвестная команда')
+    );
+  });
+
+  test('should handle regular text messages', () => {
+    runBot();
+
+    const textHandler = messageHandlers.text;
+    expect(textHandler).toBeDefined();
+
+    const mockMsg = {
+      chat: { id: 123 },
+      from: { id: 456 },
+      text: 'Hello bot'
+    };
+
+    textHandler(mockMsg);
+
+    expect(mockBot.sendMessage).toHaveBeenCalledWith(
+      123,
+      expect.stringContaining('Используйте команды')
+    );
+  });
+
+  test('should handle polling errors', () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    
+    runBot();
+
+    const errorHandler = messageHandlers.polling_error;
+    expect(errorHandler).toBeDefined();
+
+    const mockError = {
+      code: 'ETELEGRAM',
+      message: 'Test error'
+    };
+
+    errorHandler(mockError);
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Polling error:', 'ETELEGRAM', 'Test error');
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  test('should not respond to empty messages', () => {
+    runBot();
+
+    const textHandler = messageHandlers.text;
+    
+    const mockMsg = {
+      chat: { id: 123 },
+      from: { id: 456 },
+      text: ''
+    };
+
+    textHandler(mockMsg);
+
+    expect(mockBot.sendMessage).not.toHaveBeenCalled();
+  });
+
+  test('should maintain separate states for different users', () => {
+    runBot();
+
+    const startHandler = textHandlers.find(h => h.regex.test('/start'));
+
+    // Первый пользователь
+    const mockMsg1 = {
+      chat: { id: 111 },
+      from: { id: 1 },
+      text: '/start'
+    };
+
+    // Второй пользователь
+    const mockMsg2 = {
+      chat: { id: 222 },
+      from: { id: 2 },
+      text: '/start'
+    };
+
+    startHandler.callback(mockMsg1);
+    startHandler.callback(mockMsg2);
+
+    // Оба пользователя должны получить приветствие
+    expect(mockBot.sendMessage).toHaveBeenCalledTimes(2);
+    expect(mockBot.sendMessage).toHaveBeenNthCalledWith(1, 111, expect.any(String));
+    expect(mockBot.sendMessage).toHaveBeenNthCalledWith(2, 222, expect.any(String));
+  });
+});

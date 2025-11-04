@@ -1,7 +1,5 @@
 export { 
-  getTetrisRules, 
-  generateField, 
-  getRandomTetramino, 
-  getAllTetraminos,
-  isValidFieldSize
+  getRandomTetromino,
+  getTetrisRules,
+  generateField
 } from './tetris.js';
